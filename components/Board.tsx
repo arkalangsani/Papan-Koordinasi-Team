@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Project, Task } from "@/lib/db";
 import { STATUS_LABELS, STATUS_VALUES, TaskStatus } from "@/lib/constants";
+import AssigneeReport from "@/components/AssigneeReport";
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -115,6 +116,7 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
   const [assignee, setAssignee] = useState("");
   const [initialStatus, setInitialStatus] = useState<TaskStatus>("belum_mulai");
   const [deadlineInput, setDeadlineInput] = useState("");
+  const [showReport, setShowReport] = useState(false);
 
   async function fetchProject() {
     try {
@@ -307,11 +309,24 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
         <a href="/?list=1" className="mb-2 inline-block text-xs font-semibold text-indigo-600 hover:underline">
           ← Semua Project
         </a>
-        <h1 className="text-2xl font-bold text-gray-900">📋 {project ? project.name : "Papan Koordinasi Tim"}</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Lihat siapa mengerjakan apa, tanpa scroll chat WhatsApp — data yang sama untuk semua orang.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">📋 {project ? project.name : "Papan Koordinasi Tim"}</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Lihat siapa mengerjakan apa, tanpa scroll chat WhatsApp — data yang sama untuk semua orang.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowReport(true)}
+            className="whitespace-nowrap rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+          >
+            📊 Laporan per Penanggung Jawab
+          </button>
+        </div>
       </header>
+
+      {showReport && <AssigneeReport tasks={tasks} onClose={() => setShowReport(false)} />}
 
       {error && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
