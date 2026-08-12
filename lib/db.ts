@@ -117,6 +117,22 @@ export async function createProject(name: string): Promise<Project> {
   return rows[0];
 }
 
+export async function renameProject(id: number, name: string): Promise<Project | null> {
+  await ensureTable();
+  const { rows } = await sql<Project>`
+    UPDATE projects SET name = ${name} WHERE id = ${id}
+    RETURNING id, slug, name, created_at;
+  `;
+  return rows[0] ?? null;
+}
+
+export async function deleteProject(id: number): Promise<boolean> {
+  await ensureTable();
+  await sql`DELETE FROM tasks WHERE project_id = ${id};`;
+  const { rowCount } = await sql`DELETE FROM projects WHERE id = ${id};`;
+  return (rowCount ?? 0) > 0;
+}
+
 export async function listTasks(projectId: number): Promise<Task[]> {
   await ensureTable();
   const { rows } = await sql<Task>`

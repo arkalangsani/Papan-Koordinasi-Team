@@ -19,6 +19,10 @@ export default function ProjectList() {
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -70,6 +74,60 @@ export default function ProjectList() {
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Gagal membuat project.");
       setSubmitting(false);
+    }
+  }
+
+  function startEdit(project: Project) {
+    setEditingId(project.id);
+    setEditName(project.name);
+    setEditError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditError(null);
+  }
+
+  async function handleRename(e: React.FormEvent, project: Project) {
+    e.preventDefault();
+    setEditError(null);
+
+    const trimmed = editName.trim();
+    if (!trimmed) {
+      setEditError("Nama project wajib diisi.");
+      return;
+    }
+
+    setEditSubmitting(true);
+    try {
+      const res = await fetch(`/api/projects/${project.slug}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Gagal mengubah nama project.");
+      setProjects((prev) => prev.map((p) => (p.id === project.id ? { ...p, name: trimmed } : p)));
+      setEditingId(null);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Gagal mengubah nama project.");
+    } finally {
+      setEditSubmitting(false);
+    }
+  }
+
+  async function handleDeleteProject(project: Project) {
+    const confirmed = window.confirm(
+      `Hapus project "${project.name}"? Semua tugas di dalamnya akan ikut terhapus dan tidak bisa dikembalikan.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/projects/${project.slug}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setProjects((prev) => prev.filter((p) => p.id !== project.id));
+    } catch {
+      setError("Gagal menghapus project. Silakan coba lagi.");
     }
   }
 
@@ -129,16 +187,71 @@ export default function ProjectList() {
         </div>
       ) : (
         <div className="flex flex-col gap-2.5">
-          {projects.map((project) => (
-            <Link
-              key={project.id}
-              href={`/${project.slug}`}
-              className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm hover:border-indigo-400 hover:shadow"
-            >
-              <span className="font-semibold text-gray-900">{project.name}</span>
-              <span className="text-sm text-gray-400">Buka →</span>
-            </Link>
-          ))}
+          {projects.map((project) =>
+            editingId === project.id ? (
+              <form
+                key={project.id}
+                onSubmit={(e) => handleRename(e, project)}
+                className="flex items-center gap-2 rounded-xl border border-indigo-300 bg-white px-4 py-3 shadow-sm"
+              >
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  autoFocus
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="whitespace-nowrap rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                >
+                  {editSubmitting ? "Menyimpan..." : "Simpan"}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="whitespace-nowrap rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                >
+                  Batal
+                </button>
+                {editError && <p className="w-full text-xs text-red-600">{editError}</p>}
+              </form>
+            ) : (
+              <div
+                key={project.id}
+                className="flex items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm hover:border-indigo-400 hover:shadow"
+              >
+                <Link href={`/${project.slug}`} className="flex-1 font-semibold text-gray-900">
+                  {project.name}
+                </Link>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(project)}
+                    title="Ubah nama project"
+                    className="rounded-md border border-gray-300 px-2.5 py-1.5 text-xs text-gray-600 hover:border-indigo-400 hover:text-indigo-600"
+                  >
+                    ✎
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteProject(project)}
+                    title="Hapus project"
+                    className="rounded-md border border-gray-300 px-2.5 py-1.5 text-xs text-red-600 hover:border-red-600 hover:bg-red-600 hover:text-white"
+                  >
+                    ✕
+                  </button>
+                  <Link
+                    href={`/${project.slug}`}
+                    className="ml-1 whitespace-nowrap text-sm text-gray-400 hover:text-indigo-600"
+                  >
+                    Buka →
+                  </Link>
+                </div>
+              </div>
+            )
+          )}
         </div>
       )}
     </main>
