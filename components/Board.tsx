@@ -13,15 +13,15 @@ const COLUMN_STYLES: Record<TaskStatus, string> = {
 };
 
 const COLUMN_BG_STYLES: Record<TaskStatus, string> = {
-  belum_mulai: "border-gray-300 bg-gray-50",
-  dikerjakan: "border-amber-300 bg-amber-50",
-  selesai: "border-green-300 bg-green-50",
+  belum_mulai: "border-slate-400 bg-slate-200",
+  dikerjakan: "border-amber-400 bg-amber-200",
+  selesai: "border-green-400 bg-green-200",
 };
 
 const COLUMN_HEADER_BORDER_STYLES: Record<TaskStatus, string> = {
-  belum_mulai: "border-gray-200",
-  dikerjakan: "border-amber-200",
-  selesai: "border-green-200",
+  belum_mulai: "border-slate-400",
+  dikerjakan: "border-amber-400",
+  selesai: "border-green-400",
 };
 
 function ProgressSlider({ task, onCommit }: { task: Task; onCommit: (task: Task, value: number) => void }) {
