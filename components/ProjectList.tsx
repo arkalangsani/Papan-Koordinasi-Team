@@ -1,12 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Project } from "@/lib/db";
 
 export default function ProjectList() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // ?list=1 memaksa halaman ini tetap tampil, dipakai oleh link
+  // "← Semua Project" di papan supaya tidak langsung ke-redirect balik
+  // ke satu-satunya project yang ada.
+  const forceList = searchParams.get("list") === "1";
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [redirecting, setRedirecting] = useState(false);
@@ -24,8 +29,9 @@ export default function ProjectList() {
         const list: Project[] = data.projects ?? [];
 
         // Kalau cuma ada 1 project, langsung masuk ke papannya —
-        // supaya tim yang belum butuh multi-project tidak kena langkah tambahan.
-        if (list.length === 1) {
+        // supaya tim yang belum butuh multi-project tidak kena langkah
+        // tambahan. Kecuali user sengaja minta lihat daftar (forceList).
+        if (list.length === 1 && !forceList) {
           setRedirecting(true);
           router.replace(`/${list[0].slug}`);
           return;
@@ -39,7 +45,7 @@ export default function ProjectList() {
         setLoading(false);
       }
     })();
-  }, [router]);
+  }, [router, forceList]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();

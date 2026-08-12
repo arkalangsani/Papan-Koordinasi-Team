@@ -218,7 +218,7 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
       <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
         <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-10 text-center text-gray-500">
           <p className="mb-3">Project tidak ditemukan.</p>
-          <Link href="/" className="text-sm font-semibold text-indigo-600 hover:underline">
+          <Link href="/?list=1" className="text-sm font-semibold text-indigo-600 hover:underline">
             ← Lihat semua project
           </Link>
         </div>
@@ -229,7 +229,7 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
   return (
     <main className="mx-auto max-w-5xl px-4 pb-16 pt-6">
       <header className="mb-6">
-        <Link href="/" className="mb-2 inline-block text-xs font-semibold text-indigo-600 hover:underline">
+        <Link href="/?list=1" className="mb-2 inline-block text-xs font-semibold text-indigo-600 hover:underline">
           ← Semua Project
         </Link>
         <h1 className="text-2xl font-bold text-gray-900">📋 {project ? project.name : "Papan Koordinasi Tim"}</h1>
