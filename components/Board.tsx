@@ -56,6 +56,13 @@ export default function Board() {
     return map;
   }, [tasks]);
 
+  const progress = useMemo(() => {
+    const total = tasks.length;
+    const selesai = tasks.filter((t) => t.status === "selesai").length;
+    const percent = total === 0 ? 0 : Math.round((selesai / total) * 100);
+    return { total, selesai, percent };
+  }, [tasks]);
+
   async function handleAddTask(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -130,6 +137,24 @@ export default function Board() {
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
+      )}
+
+      {!loading && progress.total > 0 && (
+        <section className="mb-7 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-gray-900">Progres Pelaksanaan</h2>
+            <span className="text-lg font-bold text-indigo-600">{progress.percent}%</span>
+          </div>
+          <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+            <div
+              className="h-full rounded-full bg-indigo-600 transition-all"
+              style={{ width: `${progress.percent}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-gray-500">
+            {progress.selesai} dari {progress.total} tugas selesai
+          </p>
+        </section>
       )}
 
       <section className="mb-7 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
