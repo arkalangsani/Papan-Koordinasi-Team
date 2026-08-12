@@ -15,6 +15,7 @@ export type Task = {
   assignee: string;
   status: TaskStatus;
   progress_percent: number;
+  deadline: string | null;
   updated_at: string;
   created_at: string;
 };
@@ -48,12 +49,16 @@ function ensureTable(): Promise<void> {
           assignee TEXT NOT NULL,
           status TEXT NOT NULL DEFAULT 'belum_mulai',
           progress_percent INTEGER NOT NULL DEFAULT 0,
+          deadline TEXT,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
       `;
       await sql`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS progress_percent INTEGER NOT NULL DEFAULT 0;`;
       await sql`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id);`;
+      // Disimpan sebagai TEXT "YYYY-MM-DD" (bukan tipe DATE) supaya tidak
+      // kena pergeseran tanggal akibat konversi timezone saat dibaca.
+      await sql`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS deadline TEXT;`;
 
       await sql`
         INSERT INTO projects (slug, name)
@@ -136,7 +141,7 @@ export async function deleteProject(id: number): Promise<boolean> {
 export async function listTasks(projectId: number): Promise<Task[]> {
   await ensureTable();
   const { rows } = await sql<Task>`
-    SELECT id, project_id, title, assignee, status, progress_percent, updated_at, created_at
+    SELECT id, project_id, title, assignee, status, progress_percent, deadline, updated_at, created_at
     FROM tasks
     WHERE project_id = ${projectId}
     ORDER BY created_at ASC;
@@ -148,14 +153,15 @@ export async function createTask(
   projectId: number,
   title: string,
   assignee: string,
-  status: TaskStatus
+  status: TaskStatus,
+  deadline: string | null
 ): Promise<Task> {
   await ensureTable();
   const initialProgress = status === "selesai" ? 100 : 0;
   const { rows } = await sql<Task>`
-    INSERT INTO tasks (project_id, title, assignee, status, progress_percent)
-    VALUES (${projectId}, ${title}, ${assignee}, ${status}, ${initialProgress})
-    RETURNING id, project_id, title, assignee, status, progress_percent, updated_at, created_at;
+    INSERT INTO tasks (project_id, title, assignee, status, progress_percent, deadline)
+    VALUES (${projectId}, ${title}, ${assignee}, ${status}, ${initialProgress}, ${deadline})
+    RETURNING id, project_id, title, assignee, status, progress_percent, deadline, updated_at, created_at;
   `;
   return rows[0];
 }
@@ -172,7 +178,7 @@ export async function updateTaskStatus(id: number, status: TaskStatus): Promise<
         END,
         updated_at = NOW()
     WHERE id = ${id}
-    RETURNING id, project_id, title, assignee, status, progress_percent, updated_at, created_at;
+    RETURNING id, project_id, title, assignee, status, progress_percent, deadline, updated_at, created_at;
   `;
   return rows[0] ?? null;
 }
@@ -183,7 +189,18 @@ export async function updateTaskProgress(id: number, progressPercent: number): P
     UPDATE tasks
     SET progress_percent = ${progressPercent}, updated_at = NOW()
     WHERE id = ${id}
-    RETURNING id, project_id, title, assignee, status, progress_percent, updated_at, created_at;
+    RETURNING id, project_id, title, assignee, status, progress_percent, deadline, updated_at, created_at;
+  `;
+  return rows[0] ?? null;
+}
+
+export async function updateTaskDeadline(id: number, deadline: string | null): Promise<Task | null> {
+  await ensureTable();
+  const { rows } = await sql<Task>`
+    UPDATE tasks
+    SET deadline = ${deadline}, updated_at = NOW()
+    WHERE id = ${id}
+    RETURNING id, project_id, title, assignee, status, progress_percent, deadline, updated_at, created_at;
   `;
   return rows[0] ?? null;
 }

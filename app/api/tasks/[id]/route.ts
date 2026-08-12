@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteTask, isValidStatus, updateTaskProgress, updateTaskStatus } from "@/lib/db";
+import { deleteTask, isValidStatus, updateTaskDeadline, updateTaskProgress, updateTaskStatus } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
+
+const DEADLINE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -24,6 +26,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         return NextResponse.json({ error: "Progres harus berupa angka 0-100." }, { status: 400 });
       }
       task = await updateTaskProgress(id, progress);
+    } else if (body.deadline !== undefined) {
+      const deadline = body.deadline;
+      if (deadline !== null && (typeof deadline !== "string" || !DEADLINE_PATTERN.test(deadline) || Number.isNaN(new Date(deadline).getTime()))) {
+        return NextResponse.json({ error: "Format deadline tidak valid." }, { status: 400 });
+      }
+      task = await updateTaskDeadline(id, deadline);
     } else {
       return NextResponse.json({ error: "Tidak ada perubahan yang dikirim." }, { status: 400 });
     }

@@ -24,6 +24,51 @@ const COLUMN_HEADER_BORDER_STYLES: Record<TaskStatus, string> = {
   selesai: "border-green-400",
 };
 
+const STATUS_BADGE_STYLES: Record<TaskStatus, string> = {
+  belum_mulai: "bg-slate-200 text-slate-700",
+  dikerjakan: "bg-amber-200 text-amber-800",
+  selesai: "bg-green-200 text-green-800",
+};
+
+function formatDeadline(dateString: string | null): string {
+  if (!dateString) return "-";
+  return new Date(`${dateString}T00:00:00`).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function isOverdue(task: Task): boolean {
+  if (!task.deadline || task.status === "selesai") return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return new Date(`${task.deadline}T00:00:00`) < today;
+}
+
+function DeadlineInput({
+  task,
+  onCommit,
+}: {
+  task: Task;
+  onCommit: (task: Task, value: string | null) => void;
+}) {
+  const overdue = isOverdue(task);
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        type="date"
+        value={task.deadline ?? ""}
+        onChange={(e) => onCommit(task, e.target.value || null)}
+        className={`rounded-md border px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none ${
+          overdue ? "border-red-400 bg-red-50 text-red-700" : "border-gray-300"
+        }`}
+      />
+      {overdue && <span title={`Lewat deadline (${formatDeadline(task.deadline)})`}>⚠️</span>}
+    </div>
+  );
+}
+
 function ProgressSlider({ task, onCommit }: { task: Task; onCommit: (task: Task, value: number) => void }) {
   const [value, setValue] = useState(task.progress_percent);
 
@@ -69,6 +114,7 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
   const [title, setTitle] = useState("");
   const [assignee, setAssignee] = useState("");
   const [initialStatus, setInitialStatus] = useState<TaskStatus>("belum_mulai");
+  const [deadlineInput, setDeadlineInput] = useState("");
 
   async function fetchProject() {
     try {
@@ -128,6 +174,15 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
     return { total, selesai, percent };
   }, [tasks]);
 
+  const recapTasks = useMemo(() => {
+    return [...tasks].sort((a, b) => {
+      if (a.deadline && b.deadline) return a.deadline.localeCompare(b.deadline);
+      if (a.deadline) return -1;
+      if (b.deadline) return 1;
+      return 0;
+    });
+  }, [tasks]);
+
   async function handleAddTask(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -149,6 +204,7 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
           title: trimmedTitle,
           assignee: trimmedAssignee,
           status: initialStatus,
+          deadline: deadlineInput || null,
         }),
       });
       if (!res.ok) {
@@ -158,6 +214,7 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
       setTitle("");
       setAssignee("");
       setInitialStatus("belum_mulai");
+      setDeadlineInput("");
       await fetchTasks(false);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Gagal menambah tugas.");
@@ -197,6 +254,22 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
       if (!res.ok) throw new Error();
     } catch {
       setError("Gagal menyimpan progres. Silakan coba lagi.");
+      fetchTasks(false);
+    }
+  }
+
+  async function handleDeadlineChange(task: Task, value: string | null) {
+    if (value === task.deadline) return;
+    setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, deadline: value } : t)));
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deadline: value }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setError("Gagal menyimpan deadline. Silakan coba lagi.");
       fetchTasks(false);
     }
   }
@@ -246,6 +319,42 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
         </div>
       )}
 
+      {!loading && recapTasks.length > 0 && (
+        <section className="mb-7 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-4 text-base font-semibold text-gray-900">Daftar Rekap Tugas</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-xs font-semibold text-gray-500">
+                  <th className="pb-2 pr-3">Nama Tugas</th>
+                  <th className="pb-2 pr-3">Penanggung Jawab</th>
+                  <th className="pb-2 pr-3">Status</th>
+                  <th className="pb-2">Deadline</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {recapTasks.map((task) => (
+                  <tr key={task.id}>
+                    <td className="py-2 pr-3 font-medium text-gray-900">{task.title}</td>
+                    <td className="py-2 pr-3 text-gray-600">👤 {task.assignee}</td>
+                    <td className="py-2 pr-3">
+                      <span
+                        className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_BADGE_STYLES[task.status]}`}
+                      >
+                        {STATUS_LABELS[task.status]}
+                      </span>
+                    </td>
+                    <td className="py-2">
+                      <DeadlineInput task={task} onCommit={handleDeadlineChange} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       {!loading && progress.total > 0 && (
         <section className="mb-7 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="mb-2 flex items-center justify-between">
@@ -266,7 +375,7 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
 
       <section className="mb-7 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="mb-4 text-base font-semibold text-gray-900">Tambah Tugas Baru</h2>
-        <form onSubmit={handleAddTask} className="grid gap-3 sm:grid-cols-[2fr_1.5fr_1.2fr_auto] sm:items-end">
+        <form onSubmit={handleAddTask} className="grid gap-3 sm:grid-cols-[2fr_1.5fr_1.1fr_1.1fr_auto] sm:items-end">
           <label className="block">
             <span className="mb-1 block text-xs font-semibold text-gray-500">Nama Tugas</span>
             <input
@@ -300,6 +409,15 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
                 </option>
               ))}
             </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold text-gray-500">Deadline (opsional)</span>
+            <input
+              type="date"
+              value={deadlineInput}
+              onChange={(e) => setDeadlineInput(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            />
           </label>
           <button
             type="submit"
