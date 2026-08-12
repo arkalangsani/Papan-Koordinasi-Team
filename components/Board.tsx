@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { Task } from "@/lib/db";
+import type { Project, Task } from "@/lib/db";
 import { STATUS_LABELS, STATUS_VALUES, TaskStatus } from "@/lib/constants";
 
 const POLL_INTERVAL_MS = 5000;
@@ -58,7 +59,9 @@ function ProgressSlider({ task, onCommit }: { task: Task; onCommit: (task: Task,
   );
 }
 
-export default function Board() {
+export default function Board({ projectSlug }: { projectSlug: string }) {
+  const [project, setProject] = useState<Project | null>(null);
+  const [projectNotFound, setProjectNotFound] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,10 +71,25 @@ export default function Board() {
   const [assignee, setAssignee] = useState("");
   const [initialStatus, setInitialStatus] = useState<TaskStatus>("belum_mulai");
 
+  async function fetchProject() {
+    try {
+      const res = await fetch(`/api/projects/${projectSlug}`, { cache: "no-store" });
+      if (res.status === 404) {
+        setProjectNotFound(true);
+        return;
+      }
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setProject(data.project);
+    } catch {
+      setError("Tidak bisa memuat data project.");
+    }
+  }
+
   async function fetchTasks(showSpinner = false) {
     if (showSpinner) setLoading(true);
     try {
-      const res = await fetch("/api/tasks", { cache: "no-store" });
+      const res = await fetch(`/api/tasks?project=${encodeURIComponent(projectSlug)}`, { cache: "no-store" });
       if (!res.ok) throw new Error("Gagal memuat data");
       const data = await res.json();
       setTasks(data.tasks ?? []);
@@ -84,6 +102,7 @@ export default function Board() {
   }
 
   useEffect(() => {
+    fetchProject();
     fetchTasks(true);
     const interval = setInterval(() => fetchTasks(false), POLL_INTERVAL_MS);
     const onFocus = () => fetchTasks(false);
@@ -92,7 +111,8 @@ export default function Board() {
       clearInterval(interval);
       window.removeEventListener("focus", onFocus);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectSlug]);
 
   const columns = useMemo(() => {
     const map = new Map<TaskStatus, Task[]>(STATUS_VALUES.map((s) => [s, []]));
@@ -125,7 +145,12 @@ export default function Board() {
       const res = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: trimmedTitle, assignee: trimmedAssignee, status: initialStatus }),
+        body: JSON.stringify({
+          project: projectSlug,
+          title: trimmedTitle,
+          assignee: trimmedAssignee,
+          status: initialStatus,
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -188,10 +213,26 @@ export default function Board() {
     }
   }
 
+  if (projectNotFound) {
+    return (
+      <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
+        <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-10 text-center text-gray-500">
+          <p className="mb-3">Project tidak ditemukan.</p>
+          <Link href="/" className="text-sm font-semibold text-indigo-600 hover:underline">
+            ← Lihat semua project
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-5xl px-4 pb-16 pt-6">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">📋 Papan Koordinasi Tim</h1>
+        <Link href="/" className="mb-2 inline-block text-xs font-semibold text-indigo-600 hover:underline">
+          ← Semua Project
+        </Link>
+        <h1 className="text-2xl font-bold text-gray-900">📋 {project ? project.name : "Papan Koordinasi Tim"}</h1>
         <p className="mt-1 text-sm text-gray-500">
           Lihat siapa mengerjakan apa, tanpa scroll chat WhatsApp — data yang sama untuk semua orang.
         </p>

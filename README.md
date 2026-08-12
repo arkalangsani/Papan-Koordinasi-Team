@@ -10,14 +10,37 @@ sama untuk semua orang** yang membuka link-nya.
 - Tambah tugas baru (nama tugas, penanggung jawab, status awal).
 - Ubah status tugas kapan saja antara **Belum Mulai / Dikerjakan / Selesai**
   langsung dari kartu tugas.
+- Untuk tugas berstatus **Dikerjakan**, penanggung jawab bisa mengisi sendiri
+  persentase progres pengerjaannya lewat slider di kartu tugas.
+- Progres keseluruhan (persentase tugas yang sudah Selesai) ditampilkan di
+  bagian atas papan.
+- Tiga kolom status punya warna berbeda supaya mudah dibedakan sekilas.
 - Hapus tugas yang sudah tidak relevan.
-- Semua tugas ditampilkan sekaligus dalam tiga kolom status, jadi tidak
-  perlu scroll chat untuk tahu progres tim.
+- **Multi-project** — satu deployment bisa dipakai untuk banyak tim/project
+  sekaligus. Setiap project punya papan dan datanya sendiri-sendiri
+  (`/nama-project`), tapi berbagi satu database dan satu link Vercel. Kalau
+  cuma ada satu project, link utama otomatis langsung membuka papannya
+  (tidak ada langkah tambahan untuk tim yang belum butuh multi-project).
 - Data tersimpan di database bersama (Vercel Postgres), bukan localStorage
   — semua anggota tim melihat data yang sama dari perangkat masing-masing.
   Tampilan otomatis memperbarui data setiap beberapa detik.
 - Tanpa login — siapa pun yang punya link bisa menambah tugas dan mengubah
   status.
+
+## Multi-Project
+
+Buka link utama (`/`):
+
+- Kalau baru ada **1 project**, Anda langsung diarahkan ke papan project itu
+  — tidak ada langkah ekstra.
+- Kalau ada **2 project atau lebih**, Anda akan melihat daftar project untuk
+  dipilih, plus form untuk **membuat project baru** (misal "Tim Marketing",
+  "Tim Produksi", dst). Setiap project baru otomatis dapat papan tugasnya
+  sendiri di `/nama-project-nya` dan datanya terpisah dari project lain.
+
+Bagikan link project (`.../nama-project`) ke tim yang bersangkutan, atau
+bagikan link utama (`/`) kalau anggota tim perlu memilih sendiri project
+mana yang mau dibuka.
 
 ## Teknologi
 

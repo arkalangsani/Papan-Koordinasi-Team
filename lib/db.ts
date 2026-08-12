@@ -1,8 +1,16 @@
 import { sql } from "@vercel/postgres";
 import { STATUS_VALUES, TaskStatus } from "./constants";
 
+export type Project = {
+  id: number;
+  slug: string;
+  name: string;
+  created_at: string;
+};
+
 export type Task = {
   id: number;
+  project_id: number;
   title: string;
   assignee: string;
   status: TaskStatus;
@@ -11,46 +19,127 @@ export type Task = {
   created_at: string;
 };
 
+const DEFAULT_PROJECT_SLUG = "umum";
+const DEFAULT_PROJECT_NAME = "Umum";
+
 let tableReady: Promise<void> | null = null;
 
-// Membuat tabel jika belum ada, dan menambah kolom baru pada tabel lama
-// yang sudah ada (idempotent) supaya deploy tidak butuh migrasi manual.
+// Membuat tabel jika belum ada, dan menambah kolom/tabel baru pada database
+// lama yang sudah ada (idempotent) supaya deploy tidak butuh migrasi manual.
+// Tugas lama (dari sebelum fitur multi-project) otomatis dipindahkan ke
+// project default "Umum" supaya datanya tidak hilang.
 function ensureTable(): Promise<void> {
   if (!tableReady) {
-    tableReady = sql`
-      CREATE TABLE IF NOT EXISTS tasks (
-        id SERIAL PRIMARY KEY,
-        title TEXT NOT NULL,
-        assignee TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'belum_mulai',
-        progress_percent INTEGER NOT NULL DEFAULT 0,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-    `
-      .then(() => sql`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS progress_percent INTEGER NOT NULL DEFAULT 0;`)
-      .then(() => undefined);
+    tableReady = (async () => {
+      await sql`
+        CREATE TABLE IF NOT EXISTS projects (
+          id SERIAL PRIMARY KEY,
+          slug TEXT UNIQUE NOT NULL,
+          name TEXT NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS tasks (
+          id SERIAL PRIMARY KEY,
+          project_id INTEGER REFERENCES projects(id),
+          title TEXT NOT NULL,
+          assignee TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'belum_mulai',
+          progress_percent INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `;
+      await sql`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS progress_percent INTEGER NOT NULL DEFAULT 0;`;
+      await sql`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id);`;
+
+      await sql`
+        INSERT INTO projects (slug, name)
+        VALUES (${DEFAULT_PROJECT_SLUG}, ${DEFAULT_PROJECT_NAME})
+        ON CONFLICT (slug) DO NOTHING;
+      `;
+      const { rows } = await sql<{ id: number }>`
+        SELECT id FROM projects WHERE slug = ${DEFAULT_PROJECT_SLUG};
+      `;
+      const defaultProjectId = rows[0]?.id;
+      if (defaultProjectId) {
+        await sql`UPDATE tasks SET project_id = ${defaultProjectId} WHERE project_id IS NULL;`;
+      }
+    })();
   }
   return tableReady;
 }
 
-export async function listTasks(): Promise<Task[]> {
+function slugify(input: string): string {
+  const base = input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return base || "project";
+}
+
+export async function listProjects(): Promise<Project[]> {
+  await ensureTable();
+  const { rows } = await sql<Project>`
+    SELECT id, slug, name, created_at FROM projects ORDER BY created_at ASC;
+  `;
+  return rows;
+}
+
+export async function getProjectBySlug(slug: string): Promise<Project | null> {
+  await ensureTable();
+  const { rows } = await sql<Project>`
+    SELECT id, slug, name, created_at FROM projects WHERE slug = ${slug};
+  `;
+  return rows[0] ?? null;
+}
+
+export async function createProject(name: string): Promise<Project> {
+  await ensureTable();
+  const base = slugify(name);
+  let slug = base;
+  let attempt = 1;
+  // Cari slug unik kalau nama project sudah dipakai project lain.
+  for (;;) {
+    const { rows } = await sql`SELECT 1 FROM projects WHERE slug = ${slug};`;
+    if (rows.length === 0) break;
+    attempt += 1;
+    slug = `${base}-${attempt}`;
+  }
+  const { rows } = await sql<Project>`
+    INSERT INTO projects (slug, name)
+    VALUES (${slug}, ${name})
+    RETURNING id, slug, name, created_at;
+  `;
+  return rows[0];
+}
+
+export async function listTasks(projectId: number): Promise<Task[]> {
   await ensureTable();
   const { rows } = await sql<Task>`
-    SELECT id, title, assignee, status, progress_percent, updated_at, created_at
+    SELECT id, project_id, title, assignee, status, progress_percent, updated_at, created_at
     FROM tasks
+    WHERE project_id = ${projectId}
     ORDER BY created_at ASC;
   `;
   return rows;
 }
 
-export async function createTask(title: string, assignee: string, status: TaskStatus): Promise<Task> {
+export async function createTask(
+  projectId: number,
+  title: string,
+  assignee: string,
+  status: TaskStatus
+): Promise<Task> {
   await ensureTable();
   const initialProgress = status === "selesai" ? 100 : 0;
   const { rows } = await sql<Task>`
-    INSERT INTO tasks (title, assignee, status, progress_percent)
-    VALUES (${title}, ${assignee}, ${status}, ${initialProgress})
-    RETURNING id, title, assignee, status, progress_percent, updated_at, created_at;
+    INSERT INTO tasks (project_id, title, assignee, status, progress_percent)
+    VALUES (${projectId}, ${title}, ${assignee}, ${status}, ${initialProgress})
+    RETURNING id, project_id, title, assignee, status, progress_percent, updated_at, created_at;
   `;
   return rows[0];
 }
@@ -67,7 +156,7 @@ export async function updateTaskStatus(id: number, status: TaskStatus): Promise<
         END,
         updated_at = NOW()
     WHERE id = ${id}
-    RETURNING id, title, assignee, status, progress_percent, updated_at, created_at;
+    RETURNING id, project_id, title, assignee, status, progress_percent, updated_at, created_at;
   `;
   return rows[0] ?? null;
 }
@@ -78,7 +167,7 @@ export async function updateTaskProgress(id: number, progressPercent: number): P
     UPDATE tasks
     SET progress_percent = ${progressPercent}, updated_at = NOW()
     WHERE id = ${id}
-    RETURNING id, title, assignee, status, progress_percent, updated_at, created_at;
+    RETURNING id, project_id, title, assignee, status, progress_percent, updated_at, created_at;
   `;
   return rows[0] ?? null;
 }

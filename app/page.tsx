@@ -1,5 +1,5 @@
-import Board from "@/components/Board";
+import ProjectList from "@/components/ProjectList";
 
 export default function Home() {
-  return <Board />;
+  return <ProjectList />;
 }
