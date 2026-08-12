@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteTask, isValidStatus, updateTaskStatus } from "@/lib/db";
+import { deleteTask, isValidStatus, updateTaskProgress, updateTaskStatus } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -11,11 +11,23 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 
     const body = await request.json();
-    if (!isValidStatus(body.status)) {
-      return NextResponse.json({ error: "Status tidak valid." }, { status: 400 });
+    let task;
+
+    if (body.status !== undefined) {
+      if (!isValidStatus(body.status)) {
+        return NextResponse.json({ error: "Status tidak valid." }, { status: 400 });
+      }
+      task = await updateTaskStatus(id, body.status);
+    } else if (body.progress !== undefined) {
+      const progress = Number(body.progress);
+      if (!Number.isInteger(progress) || progress < 0 || progress > 100) {
+        return NextResponse.json({ error: "Progres harus berupa angka 0-100." }, { status: 400 });
+      }
+      task = await updateTaskProgress(id, progress);
+    } else {
+      return NextResponse.json({ error: "Tidak ada perubahan yang dikirim." }, { status: 400 });
     }
 
-    const task = await updateTaskStatus(id, body.status);
     if (!task) {
       return NextResponse.json({ error: "Tugas tidak ditemukan." }, { status: 404 });
     }
@@ -23,7 +35,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     return NextResponse.json({ task });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Gagal mengubah status tugas." }, { status: 500 });
+    return NextResponse.json({ error: "Gagal memperbarui tugas." }, { status: 500 });
   }
 }
 

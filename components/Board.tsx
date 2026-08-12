@@ -12,6 +12,40 @@ const COLUMN_STYLES: Record<TaskStatus, string> = {
   selesai: "text-green-700",
 };
 
+function ProgressSlider({ task, onCommit }: { task: Task; onCommit: (task: Task, value: number) => void }) {
+  const [value, setValue] = useState(task.progress_percent);
+
+  useEffect(() => {
+    setValue(task.progress_percent);
+  }, [task.progress_percent]);
+
+  function commit(raw: string) {
+    onCommit(task, Number(raw));
+  }
+
+  return (
+    <div className="mb-2.5">
+      <div className="mb-1 flex items-center justify-between text-xs text-gray-600">
+        <span>Progres saya</span>
+        <span className="font-semibold text-amber-700">{value}%</span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={5}
+        value={value}
+        onChange={(e) => setValue(Number(e.target.value))}
+        onMouseUp={(e) => commit((e.target as HTMLInputElement).value)}
+        onTouchEnd={(e) => commit((e.target as HTMLInputElement).value)}
+        onKeyUp={(e) => commit((e.target as HTMLInputElement).value)}
+        className="w-full accent-amber-600"
+        aria-label="Progres pengerjaan tugas (%)"
+      />
+    </div>
+  );
+}
+
 export default function Board() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,7 +132,8 @@ export default function Board() {
 
   async function handleStatusChange(task: Task, status: TaskStatus) {
     if (task.status === status) return;
-    setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status } : t)));
+    const nextProgress = status === "selesai" ? 100 : status === "belum_mulai" ? 0 : task.progress_percent;
+    setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status, progress_percent: nextProgress } : t)));
     try {
       const res = await fetch(`/api/tasks/${task.id}`, {
         method: "PATCH",
@@ -109,6 +144,23 @@ export default function Board() {
       await fetchTasks(false);
     } catch {
       setError("Gagal mengubah status. Silakan coba lagi.");
+      fetchTasks(false);
+    }
+  }
+
+  async function handleProgressChange(task: Task, value: number) {
+    const clamped = Math.min(100, Math.max(0, value));
+    if (clamped === task.progress_percent) return;
+    setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, progress_percent: clamped } : t)));
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ progress: clamped }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setError("Gagal menyimpan progres. Silakan coba lagi.");
       fetchTasks(false);
     }
   }
@@ -227,6 +279,9 @@ export default function Board() {
                       <div key={task.id} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                         <p className="break-words text-sm font-semibold text-gray-900">{task.title}</p>
                         <p className="mb-2.5 text-xs text-gray-500">👤 {task.assignee}</p>
+                        {task.status === "dikerjakan" && (
+                          <ProgressSlider task={task} onCommit={handleProgressChange} />
+                        )}
                         <div className="flex items-center gap-2">
                           <select
                             value={task.status}
