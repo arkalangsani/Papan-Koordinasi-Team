@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Project, Task } from "@/lib/db";
 import { STATUS_LABELS, STATUS_VALUES, TaskStatus } from "@/lib/constants";
@@ -218,9 +217,9 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
       <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
         <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-10 text-center text-gray-500">
           <p className="mb-3">Project tidak ditemukan.</p>
-          <Link href="/?list=1" className="text-sm font-semibold text-indigo-600 hover:underline">
+          <a href="/?list=1" className="text-sm font-semibold text-indigo-600 hover:underline">
             ← Lihat semua project
-          </Link>
+          </a>
         </div>
       </main>
     );
@@ -229,9 +228,12 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
   return (
     <main className="mx-auto max-w-5xl px-4 pb-16 pt-6">
       <header className="mb-6">
-        <Link href="/?list=1" className="mb-2 inline-block text-xs font-semibold text-indigo-600 hover:underline">
+        {/* <a> biasa (bukan next/link) supaya selalu reload penuh — client-side
+            navigation Next.js bisa reuse cache halaman "/" dari sebelumnya
+            dan mengabaikan perubahan query "?list=1". */}
+        <a href="/?list=1" className="mb-2 inline-block text-xs font-semibold text-indigo-600 hover:underline">
           ← Semua Project
-        </Link>
+        </a>
         <h1 className="text-2xl font-bold text-gray-900">📋 {project ? project.name : "Papan Koordinasi Tim"}</h1>
         <p className="mt-1 text-sm text-gray-500">
           Lihat siapa mengerjakan apa, tanpa scroll chat WhatsApp — data yang sama untuk semua orang.
