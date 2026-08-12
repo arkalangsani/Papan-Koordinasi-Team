@@ -341,6 +341,7 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-left text-xs font-semibold text-gray-500">
+                  <th className="pb-2 pr-3">No</th>
                   <th className="pb-2 pr-3">Nama Tugas</th>
                   <th className="pb-2 pr-3">Penanggung Jawab</th>
                   <th className="pb-2 pr-3">Status</th>
@@ -348,8 +349,9 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {recapTasks.map((task) => (
+                {recapTasks.map((task, index) => (
                   <tr key={task.id}>
+                    <td className="py-2 pr-3 text-gray-500">{index + 1}</td>
                     <td className="py-2 pr-3 font-medium text-gray-900">{task.title}</td>
                     <td className="py-2 pr-3 text-gray-600">👤 {task.assignee}</td>
                     <td className="py-2 pr-3">
