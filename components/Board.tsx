@@ -12,6 +12,18 @@ const COLUMN_STYLES: Record<TaskStatus, string> = {
   selesai: "text-green-700",
 };
 
+const COLUMN_BG_STYLES: Record<TaskStatus, string> = {
+  belum_mulai: "border-gray-300 bg-gray-50",
+  dikerjakan: "border-amber-300 bg-amber-50",
+  selesai: "border-green-300 bg-green-50",
+};
+
+const COLUMN_HEADER_BORDER_STYLES: Record<TaskStatus, string> = {
+  belum_mulai: "border-gray-200",
+  dikerjakan: "border-amber-200",
+  selesai: "border-green-200",
+};
+
 function ProgressSlider({ task, onCommit }: { task: Task; onCommit: (task: Task, value: number) => void }) {
   const [value, setValue] = useState(task.progress_percent);
 
@@ -264,10 +276,10 @@ export default function Board() {
           {STATUS_VALUES.map((status) => {
             const columnTasks = columns.get(status) ?? [];
             return (
-              <div key={status} className="rounded-xl border border-gray-200 bg-white p-3.5">
-                <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-2.5">
+              <div key={status} className={`rounded-xl border-2 p-3.5 ${COLUMN_BG_STYLES[status]}`}>
+                <div className={`mb-3 flex items-center justify-between border-b pb-2.5 ${COLUMN_HEADER_BORDER_STYLES[status]}`}>
                   <h3 className={`text-sm font-bold ${COLUMN_STYLES[status]}`}>{STATUS_LABELS[status]}</h3>
-                  <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-bold text-gray-500">
+                  <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-bold text-gray-500">
                     {columnTasks.length}
                   </span>
                 </div>
@@ -276,7 +288,7 @@ export default function Board() {
                 ) : (
                   <div className="flex flex-col gap-2.5">
                     {columnTasks.map((task) => (
-                      <div key={task.id} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      <div key={task.id} className="rounded-lg border border-gray-200 bg-white p-3">
                         <p className="break-words text-sm font-semibold text-gray-900">{task.title}</p>
                         <p className="mb-2.5 text-xs text-gray-500">👤 {task.assignee}</p>
                         {task.status === "dikerjakan" && (
