@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Papan Koordinasi Tim",
+  title: "Papan Kontrol Project Team",
   description: "Papan koordinasi tugas tim, semua orang lihat data yang sama secara real-time.",
 };
 
