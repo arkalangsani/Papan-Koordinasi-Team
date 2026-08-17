@@ -311,7 +311,7 @@ export default function Board({ projectSlug }: { projectSlug: string }) {
         </a>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">📋 {project ? project.name : "Papan Koordinasi Tim"}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">📋 {project ? project.name : "Papan Kontrol Project Team"}</h1>
             <p className="mt-1 text-sm text-gray-500">
               Lihat siapa mengerjakan apa, tanpa scroll chat WhatsApp — data yang sama untuk semua orang.
             </p>

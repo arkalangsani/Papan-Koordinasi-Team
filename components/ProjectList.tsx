@@ -142,7 +142,7 @@ export default function ProjectList() {
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">📋 Papan Koordinasi Tim</h1>
+        <h1 className="text-2xl font-bold text-gray-900">📋 Papan Kontrol Project Team</h1>
         <p className="mt-1 text-sm text-gray-500">
           Pilih project/tim yang mau dilihat, atau buat papan baru untuk project lain.
         </p>

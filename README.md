@@ -1,4 +1,4 @@
-# Papan Koordinasi Tim
+# Papan Kontrol Project Team
 
 Papan koordinasi visual terpusat untuk tim kecil yang selama ini
 mengandalkan grup WhatsApp untuk tahu siapa mengerjakan apa. Semua tugas
