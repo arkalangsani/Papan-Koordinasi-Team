@@ -172,7 +172,7 @@ export default function ProjectList() {
             disabled={submitting}
             className="whitespace-nowrap rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
           >
-            {submitting ? "Membuat..." : "+ Buat Tugas"}
+            {submitting ? "Membuat..." : "+ Buat Project"}
           </button>
         </form>
         {formError && <p className="mt-3 text-sm text-red-600">{formError}</p>}
